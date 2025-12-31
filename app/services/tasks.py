@@ -1,0 +1,60 @@
+from sqlalchemy.orm import Session
+from app.models import Task
+from app.schemas import TaskCreate
+from sqlalchemy.orm import Session
+from app.models import Task
+from sqlalchemy.exc import SQLAlchemyError
+from app.exceptions import NotFoundError
+
+
+def create_task(db: Session, data: TaskCreate) -> Task:
+    task = Task(
+        title=data.title,
+        description=data.description,
+        done=False,
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return task
+
+def list_tasks(db: Session, limit: int = 50, offset: int = 0) -> list[Task]:
+    return (
+        db.query(Task)
+        .order_by(Task.id.asc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+def update_task_done(db: Session, task_id: int, done: bool) -> Task:
+    task = db.query(Task).filter(Task.id == task_id).first()
+
+    if task is None:
+        raise NotFoundError("Task not found")
+
+    task.done = done
+    db.commit()
+    db.refresh(task)
+    return task
+
+def delete_task(db: Session, task_id: int) -> None:
+    task = db.query(Task).filter(Task.id == task_id).first()
+
+    if task is None:
+        raise NotFoundError("Task not found")
+
+    try:
+        db.delete(task)
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        # Erro interno do banco/ORM (não é "erro do cliente")
+        raise
+
+def get_task_by_id(db: Session, task_id: int) -> Task:
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if task is None:
+        raise NotFoundError("Task not found")
+    
+    return task
