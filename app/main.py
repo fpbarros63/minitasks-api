@@ -8,7 +8,11 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from app.exceptions import NotFoundError
 
+from app.exceptions import add_exception_handlers
+
 app = FastAPI(title="MiniTasks API")
+
+add_exception_handlers(app)
 
 app.include_router(health_router)
 app.include_router(tasks_router)
