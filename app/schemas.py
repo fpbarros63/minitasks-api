@@ -3,6 +3,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field, ConfigDict
 
+from typing import Optional
+
 
 class ErrorResponse(BaseModel):
     """
@@ -66,4 +68,12 @@ class TaskUpdate(BaseModel):
         examples=[True],
     )
 
+
+
+class TaskListResponse(BaseModel):
+    items: list[TaskResponse] = Field(..., description="List of tasks for the current page.")
+    total: int = Field(..., ge=0, description="Total number of tasks matching the filter.")
+    limit: int = Field(..., ge=1, le=100, description="Max number of items returned.")
+    offset: int = Field(..., ge=0, description="Number of items skipped.")
+    done: Optional[bool] = Field(default=None, description="Applied done filter, if any.")
 

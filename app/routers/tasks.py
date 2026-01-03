@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Path, Body
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
-from app.schemas import TaskCreate, TaskResponse, TaskUpdate, ErrorResponse
+from app.schemas import TaskCreate, TaskResponse, TaskUpdate, ErrorResponse, TaskListResponse
 from app.services import tasks as tasks_service
 
 router = APIRouter(prefix="/tasks")
@@ -51,12 +51,11 @@ def create_task_route(
 ):
     return tasks_service.create_task(db, payload)
 
-
 @router.get(
     "/",
     tags=["Tasks (Collection)"],
     operation_id="tasks_list",
-    response_model=list[TaskResponse],
+    response_model=TaskListResponse,
     summary="List tasks",
     description="Returns a paginated list of tasks.",
     responses={
@@ -64,13 +63,21 @@ def create_task_route(
         500: {"model": ErrorResponse, "description": "Unexpected server error."},
     },
 )
+
 def list_tasks_route(
     db: Session = Depends(get_db),
     limit: int = Query(default=50, ge=1, le=100, description="Max number of items to return.", examples=[50]),
     offset: int = Query(default=0, ge=0, description="Number of items to skip.", examples=[0]),
     done: bool | None = Query(default=None, description="Filter by completion status.", examples=[False]),
 ):
-    return tasks_service.list_tasks(db, limit=limit, offset=offset, done=done)
+    items, total = tasks_service.list_tasks(db, limit=limit, offset=offset, done=done)
+    return {
+        "items": items,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "done": done,
+    }
 
 # -------------------------
 # Tasks (Item)
