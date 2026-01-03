@@ -5,7 +5,7 @@ from app.database import SessionLocal
 from app.schemas import TaskCreate, TaskResponse, TaskUpdate, ErrorResponse
 from app.services import tasks as tasks_service
 
-router = APIRouter(prefix="/tasks", tags=["Tasks"])
+router = APIRouter(prefix="/tasks")
 
 
 def get_db():
