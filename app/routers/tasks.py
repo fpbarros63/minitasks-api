@@ -23,6 +23,7 @@ def get_db():
 @router.post(
     "/",
     tags=["Tasks (Collection)"],
+    operation_id="tasks_create",
     response_model=TaskResponse,
     status_code=201,
     summary="Create a task",
@@ -54,6 +55,7 @@ def create_task_route(
 @router.get(
     "/",
     tags=["Tasks (Collection)"],
+    operation_id="tasks_list",
     response_model=list[TaskResponse],
     summary="List tasks",
     description="Returns a paginated list of tasks.",
@@ -77,6 +79,7 @@ def list_tasks_route(
 @router.get(
     "/{task_id}",
     tags=["Tasks (Item)"],
+    operation_id="tasks_get",
     response_model=TaskResponse,
     summary="Get task by id",
     description="Returns a single task by its identifier.",
@@ -110,6 +113,7 @@ def get_task_route(
 @router.patch(
     "/{task_id}",
     tags=["Tasks (Item)"],
+    operation_id="tasks_update_status",
     response_model=TaskResponse,
     summary="Update task status",
     description="Updates the task done/undone status.",
@@ -142,6 +146,7 @@ def update_task_route(
 @router.delete(
     "/{task_id}",
     tags=["Tasks (Item)"],
+    operation_id="tasks_delete",
     status_code=204,
     summary="Delete a task",
     description="Deletes a task by id.",
