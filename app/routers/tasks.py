@@ -16,8 +16,13 @@ def get_db():
         db.close()
 
 
+# -------------------------
+# Tasks (Collection)
+# -------------------------
+
 @router.post(
     "/",
+    tags=["Tasks (Collection)"],
     response_model=TaskResponse,
     status_code=201,
     summary="Create a task",
@@ -43,12 +48,12 @@ def create_task_route(
     ),
     db: Session = Depends(get_db),
 ):
-    # Service retorna ORM; response_model + from_attributes converte para schema
     return tasks_service.create_task(db, payload)
 
 
 @router.get(
     "/",
+    tags=["Tasks (Collection)"],
     response_model=list[TaskResponse],
     summary="List tasks",
     description="Returns a paginated list of tasks.",
@@ -65,8 +70,13 @@ def list_tasks_route(
     return tasks_service.list_tasks(db, limit=limit, offset=offset)
 
 
+# -------------------------
+# Tasks (Item)
+# -------------------------
+
 @router.get(
     "/{task_id}",
+    tags=["Tasks (Item)"],
     response_model=TaskResponse,
     summary="Get task by id",
     description="Returns a single task by its identifier.",
@@ -88,8 +98,6 @@ def get_task_route(
     task_id: int = Path(..., ge=1, description="Task id.", examples=[1]),
     db: Session = Depends(get_db),
 ):
-    # Se seu service já levanta HTTPException(404), ótimo.
-    # Se ele retornar None, traduzimos para um erro padronizado:
     task = tasks_service.get_task_by_id(db, task_id)
     if task is None:
         raise HTTPException(
@@ -101,6 +109,7 @@ def get_task_route(
 
 @router.patch(
     "/{task_id}",
+    tags=["Tasks (Item)"],
     response_model=TaskResponse,
     summary="Update task status",
     description="Updates the task done/undone status.",
@@ -132,6 +141,7 @@ def update_task_route(
 
 @router.delete(
     "/{task_id}",
+    tags=["Tasks (Item)"],
     status_code=204,
     summary="Delete a task",
     description="Deletes a task by id.",
@@ -146,8 +156,6 @@ def delete_task_route(
     db: Session = Depends(get_db),
 ):
     deleted = tasks_service.delete_task(db, task_id)
-    # Se seu service não retorna nada, ignore este check.
-    # Mas se ele retornar False/None quando não acha, isso dá Swagger + API melhores.
     if deleted is False or deleted is None:
         raise HTTPException(
             status_code=404,
