@@ -38,10 +38,8 @@ async def not_found_handler(request: Request, exc: NotFoundError):
     return JSONResponse(
         status_code=404,
         content={
-            "error": {
-                "type": "not_found",
-                "message": exc.message,
-                "path": str(request.url.path),
-            }
+            "code": "NOT_FOUND",
+            "message": exc.message,
+            "details": {"path": str(request.url.path)},
         },
     )
