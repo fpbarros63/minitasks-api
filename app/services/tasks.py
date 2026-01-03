@@ -6,6 +6,8 @@ from app.models import Task
 from sqlalchemy.exc import SQLAlchemyError
 from app.exceptions import NotFoundError
 
+from typing import Optional
+
 
 def create_task(db: Session, data: TaskCreate) -> Task:
     task = Task(
@@ -18,14 +20,25 @@ def create_task(db: Session, data: TaskCreate) -> Task:
     db.refresh(task)
     return task
 
-def list_tasks(db: Session, limit: int = 50, offset: int = 0) -> list[Task]:
+def list_tasks(
+    db: Session,
+    limit: int = 50,
+    offset: int = 0,
+    done: Optional[bool] = None,
+) -> list[Task]:
+    q = db.query(Task)
+
+    if done is not None:
+        q = q.filter(Task.done == done)
+
     return (
-        db.query(Task)
-        .order_by(Task.id.asc())
+        q.order_by(Task.id.asc())
         .offset(offset)
         .limit(limit)
         .all()
     )
+
+    
 
 def update_task_done(db: Session, task_id: int, done: bool) -> Task:
     task = db.query(Task).filter(Task.id == task_id).first()

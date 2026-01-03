@@ -68,9 +68,9 @@ def list_tasks_route(
     db: Session = Depends(get_db),
     limit: int = Query(default=50, ge=1, le=100, description="Max number of items to return.", examples=[50]),
     offset: int = Query(default=0, ge=0, description="Number of items to skip.", examples=[0]),
+    done: bool | None = Query(default=None, description="Filter by completion status.", examples=[False]),
 ):
-    return tasks_service.list_tasks(db, limit=limit, offset=offset)
-
+    return tasks_service.list_tasks(db, limit=limit, offset=offset, done=done)
 
 # -------------------------
 # Tasks (Item)
