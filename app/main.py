@@ -26,6 +26,8 @@ app = FastAPI(
     openapi_tags=openapi_tags,
 )
 
+app.openapi_schema = None
+
 
 # Routers
 app.include_router(health_router)
