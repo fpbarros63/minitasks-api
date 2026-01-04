@@ -57,19 +57,14 @@ def update_task_done(db: Session, task_id: int, done: bool) -> Task:
     db.refresh(task)
     return task
 
-def delete_task(db: Session, task_id: int) -> None:
-    task = db.query(Task).filter(Task.id == task_id).first()
-
+def delete_task(db: Session, task_id: int) -> bool:
+    task = db.get(Task, task_id)
     if task is None:
-        raise NotFoundError("Task not found")
+        return False
 
-    try:
-        db.delete(task)
-        db.commit()
-    except SQLAlchemyError:
-        db.rollback()
-        # Erro interno do banco/ORM (não é "erro do cliente")
-        raise
+    db.delete(task)
+    db.commit()
+    return True
 
 def get_task_by_id(db: Session, task_id: int) -> Task:
     task = db.query(Task).filter(Task.id == task_id).first()

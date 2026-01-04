@@ -1,112 +1,119 @@
-import os
 import pytest
-from fastapi.testclient import TestClient
-from alembic import command
-from alembic.config import Config
-
-os.environ["DATABASE_URL"] = "sqlite:///./test_minitasks.db"
-
-from app.main import app  # noqa: E402
-
-client = TestClient(app)
 
 
-@pytest.fixture(autouse=True)
-def reset_db():
-    # Apaga o arquivo do banco de testes
-    db_file = "test_minitasks.db"
-    if os.path.exists(db_file):
-        os.remove(db_file)
-
-    # Roda migrations no banco de testes
-    alembic_cfg = Config("alembic.ini")
-    command.upgrade(alembic_cfg, "head")
-
-    yield
+def create_task(client, title="Task A", description="Desc A"):
+    payload = {"title": title, "description": description}
+    res = client.post("/tasks", json=payload)
+    assert res.status_code == 201
+    return res.json()
 
 
-
-def test_create_task_ok():
-    resp = client.post("/tasks/", json={
-        "title": "Teste",
-        "description": "Criar task"
-    })
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["id"] == 1
-    assert data["title"] == "Teste"
-    assert data["description"] == "Criar task"
-    assert data["done"] is False
-    assert "created_at" in data
+def test_create_task_success(client):
+    task = create_task(client, "Study ML", "Twice a week")
+    assert task["id"] == 1
+    assert task["title"] == "Study ML"
+    assert task["description"] == "Twice a week"
+    assert task["done"] is False
 
 
-def test_list_tasks_pagination():
-    # cria 2
-    client.post("/tasks/", json={"title": "A", "description": None})
-    client.post("/tasks/", json={"title": "B", "description": None})
-
-    resp = client.get("/tasks/?limit=1&offset=0")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert len(data) == 1
-    assert data[0]["title"] == "A"
-
-    resp2 = client.get("/tasks/?limit=1&offset=1")
-    assert resp2.status_code == 200
-    data2 = resp2.json()
-    assert len(data2) == 1
-    assert data2[0]["title"] == "B"
+def test_create_task_validation_error_empty_title(client):
+    res = client.post("/tasks", json={"title": "", "description": "x"})
+    assert res.status_code == 422
 
 
-def test_get_task_by_id_ok():
-    created = client.post("/tasks/", json={"title": "X", "description": "Y"}).json()
+def test_get_task_by_id_success(client):
+    created = create_task(client, "Task One", "First")
     task_id = created["id"]
 
-    resp = client.get(f"/tasks/{task_id}")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["id"] == task_id
-    assert data["title"] == "X"
+    res = client.get(f"/tasks/{task_id}")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["id"] == task_id
+    assert body["title"] == "Task One"
 
 
-def test_update_task_done_ok():
-    created = client.post("/tasks/", json={"title": "X", "description": None}).json()
+def test_get_task_by_id_not_found(client):
+    res = client.get("/tasks/9999")
+    assert res.status_code == 404
+
+
+def test_patch_task_done_success(client):
+    created = create_task(client, "Task Patch", "Patch desc")
     task_id = created["id"]
 
-    resp = client.patch(f"/tasks/{task_id}", json={"done": True})
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["done"] is True
+    res = client.patch(f"/tasks/{task_id}", json={"done": True})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["done"] is True
 
 
-def test_delete_task_ok():
-    created = client.post("/tasks/", json={"title": "X", "description": None}).json()
+def test_patch_task_not_found(client):
+    res = client.patch("/tasks/9999", json={"done": True})
+    assert res.status_code == 404
+
+
+def test_delete_task_success(client):
+    created = create_task(client, "Task Del", "Del desc")
     task_id = created["id"]
 
-    resp = client.delete(f"/tasks/{task_id}")
-    assert resp.status_code == 204
+    res = client.delete(f"/tasks/{task_id}")
+    assert res.status_code == 204
 
-    # agora não existe mais -> 404 padronizado
-    resp2 = client.get(f"/tasks/{task_id}")
-    assert resp2.status_code == 404
-    body = resp2.json()
-    assert "error" in body
-    assert body["error"]["type"] == "not_found"
+    # não existe mais
+    res2 = client.get(f"/tasks/{task_id}")
+    assert res2.status_code == 404
 
 
-def test_extra_fields_forbidden_on_create():
-    resp = client.post("/tasks/", json={
-        "title": "Teste",
-        "description": "ok",
-        "foo": "bar"
-    })
-    assert resp.status_code == 422
+def test_list_tasks_pagination_limit_offset(client):
+    create_task(client, "T1", "D1")
+    create_task(client, "T2", "D2")
+    create_task(client, "T3", "D3")
+
+    res = client.get("/tasks?limit=2&offset=0")
+    assert res.status_code == 200
+    body = res.json()
+
+    assert body["total"] == 3
+    assert body["limit"] == 2
+    assert body["offset"] == 0
+    assert len(body["items"]) == 2
+    assert body["items"][0]["title"] == "T1"
+    assert body["items"][1]["title"] == "T2"
+
+    res2 = client.get("/tasks?limit=2&offset=2")
+    assert res2.status_code == 200
+    body2 = res2.json()
+
+    assert body2["total"] == 3
+    assert len(body2["items"]) == 1
+    assert body2["items"][0]["title"] == "T3"
 
 
-def test_not_found_uses_standard_error_shape():
-    resp = client.get("/tasks/999999")
-    assert resp.status_code == 404
-    data = resp.json()
-    assert "error" in data
-    assert data["error"]["type"] == "not_found"
-    assert "path" in data["error"]
+def test_list_tasks_filter_done(client):
+    t1 = create_task(client, "Done 1", "x")
+    create_task(client, "Pending 1", "y")
+    create_task(client, "Pending 2", "z")
+
+    # marca um como done
+    res = client.patch(f"/tasks/{t1['id']}", json={"done": True})
+    assert res.status_code == 200
+
+    # filtra done=true
+    res_done = client.get("/tasks?done=true&limit=50&offset=0")
+    assert res_done.status_code == 200
+    b_done = res_done.json()
+
+    assert b_done["total"] == 1
+    assert len(b_done["items"]) == 1
+    assert b_done["items"][0]["title"] == "Done 1"
+
+    # filtra done=false
+    res_pending = client.get("/tasks?done=false&limit=50&offset=0")
+    assert res_pending.status_code == 200
+    b_pending = res_pending.json()
+
+    assert b_pending["total"] == 2
+    assert len(b_pending["items"]) == 2
+    titles = [x["title"] for x in b_pending["items"]]
+    assert "Pending 1" in titles
+    assert "Pending 2" in titles

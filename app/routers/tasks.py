@@ -1,19 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Path, Body
 from sqlalchemy.orm import Session
 
-from app.database import SessionLocal
+from app.database import get_db
 from app.schemas import TaskCreate, TaskResponse, TaskUpdate, ErrorResponse, TaskListResponse
 from app.services import tasks as tasks_service
 
 router = APIRouter(prefix="/tasks")
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 # -------------------------
